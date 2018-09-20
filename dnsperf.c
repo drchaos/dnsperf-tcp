@@ -109,7 +109,7 @@
 
 #define MAX_INPUT_DATA			(64 * 1024)
 
-#define MAX_SOCKETS			2048
+#define MAX_SOCKETS			10000
 
 #define RECV_BATCH_SIZE			16
 
@@ -1040,6 +1040,7 @@ int recv_buf(threadinfo_t *tinfo, sockinfo_t *s, unsigned char *buf, unsigned in
 				errno = EAGAIN;
 			else
 				errno = error;
+				perf_log_warning("recv_buf failed: %d (%s)", errno, ERR_error_string(ERR_get_error(),NULL));
 			return -1;
 		}
 		else
@@ -1606,11 +1607,15 @@ main(int argc, char **argv)
 
 	SSL_library_init();
 	OpenSSL_add_all_algorithms();
+        OpenSSL_add_all_ciphers();
 	SSL_load_error_strings();
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 	method = SSLv23_client_method();
 #else
-	method = TLS_client_method();
+	//method = TLS_client_method();
+        // Haskell TLS and this implementation doesn't work with TLS12 at all
+        // but with TLS11 they work randomly.
+	method = TLSv1_1_method();
 #endif
 	ctx = SSL_CTX_new(method);
 	if (ctx == NULL)
